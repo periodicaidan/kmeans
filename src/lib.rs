@@ -5,12 +5,12 @@
 
 pub mod types;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 use rand::prelude::*;
 use types::*;
 use core::ops::Add;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 pub mod prelude {
     pub use super::{
@@ -19,23 +19,30 @@ pub mod prelude {
     };
 }
 
-/// k-means clustering algorithm
+/// Clustering algorithm using k-means++
 pub fn kmeans<P: DataPoint>(k: usize, datapoints: Vec<P>) -> Vec<Cluster<P>> {
+    // Initialize cluster means
     let mut clusters = _initialize_clusters(k, datapoints.clone());
 
+    // Make the initial clusterings
     for point in datapoints.iter() {
         _cluster(point, &mut clusters);
     }
 
+    // Store the current clustering for comparison later
     let mut prev_clusters = clusters.clone();
+
+    // Recalculate the means based on the points in the cluster
     for cluster in clusters.iter_mut() {
         cluster.recalculate_centroid();
         cluster.points.clear();
     }
+    // Cluster again
     for point in datapoints.iter() {
         _cluster(point, &mut clusters);
     }
 
+    // Rinse, repeat; until the clusters cease to change
     while prev_clusters != clusters {
         prev_clusters = clusters.clone();
         for cluster in clusters.iter_mut() {
@@ -47,17 +54,29 @@ pub fn kmeans<P: DataPoint>(k: usize, datapoints: Vec<P>) -> Vec<Cluster<P>> {
         }
     }
 
+    // Return the final clustering
     clusters
 }
 
+/// Initializes the clusters using an initialization algorithm based on [k-means++].
+///
+/// [k-means++]: https://en.wikipedia.org/wiki/K-means%2B%2B#Improved_initialization_algorithm
 fn _initialize_clusters<P: DataPoint>(k: usize, mut datapoints: Vec<P>) -> Vec<Cluster<P>> {
+    /// Returns one of the `centers` is closest to `point`.
     fn shortest_center_distance<P: DataPoint>(centers: &[P], point: &P) -> f64 {
         centers.iter()
+            // calculate the distances between each center and `point`
             .map(|c| c.dist(point))
+            // take the minimum of those distances
             .fold(f64::INFINITY, f64::min)
     }
 
+    /// Selects a point using a weighted distribution based on `shortest_center_distance` squared.
     fn select_point(distribution: &[f64]) -> usize {
+        // Generate the selection criterion for each point.
+        // We'll generate a random number and select the point whose selection criterion is less
+        // than that number, but whose following point's is greater than that number.
+        // Like throwing a dart at a number line and seeing what range of values it falls in.
         let distr_sum = distribution.iter().fold(0.0, f64::add);
         let mut selection_criteria = Vec::with_capacity(distribution.len());
         for i in 0..distribution.len() {
@@ -81,23 +100,26 @@ fn _initialize_clusters<P: DataPoint>(k: usize, mut datapoints: Vec<P>) -> Vec<C
     }
 
     let mut clusters = Vec::with_capacity(k);
-    let mut rng = rand::thread_rng();
-    let first_point = datapoints.remove(rng.gen_range(0, datapoints.len()));
+    // First centroid is selected with a uniform distribution
+    let first_point = datapoints.remove(thread_rng().gen_range(0, datapoints.len()));
     let mut distribution: Vec<f64> = datapoints.iter()
         .map(|p| first_point.dist(p).powi(2))
         .collect();
 
+    // Keep selecting unique points until we have `k` centroids
     while clusters.len() < k {
         let point = datapoints.remove(select_point(&distribution));
         clusters.push(Cluster::new(&point));
         let centroids = Cluster::centroids(&clusters);
         distribution = datapoints.iter()
-            .map(|p| shortest_center_distance(&centroids, p))
+            .map(|p| shortest_center_distance(&centroids, p).powi(2))
             .collect()
     }
 
     clusters
 }
+
+/// Assigns a point to the cluster whose centroid is closest
 fn _cluster<P: DataPoint>(p: &P, clusters: &mut [Cluster<P>]) {
     let mut closest_cluster = 0;
     for c in 1..clusters.len() {
@@ -158,10 +180,14 @@ mod test {
     #[test]
     fn file_test() {
         let file = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/test_data.txt")).unwrap();
-        let data: Vec<(f64, f64)> = file.trim().split("\n")
+        let data: Vec<(f64, f64, f64)> = file.trim().split("\n")
             .map(|line| {
                 let strings: Vec<&str> = line.trim().split(" ").collect();
-                (strings[0].parse::<f64>().unwrap(), strings[1].parse::<f64>().unwrap())
+                (
+                    strings[0].parse::<f64>().unwrap(),
+                    strings[1].parse::<f64>().unwrap(),
+                    strings[2].parse::<f64>().unwrap(),
+                )
             })
             .collect();
 

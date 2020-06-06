@@ -5,15 +5,16 @@ use core::iter::Sum;
 use core::convert::TryFrom;
 use core::fmt::Debug;
 
-/// A representation of a point in a data space. Implement it on your point type by implementing
-/// the [`dist`], [`add`], [`div`], and [`additive_identity`] functions.
+/// A representation of a point in a data space.
 pub trait DataPoint: Clone + PartialEq {
-    /// The Euclidean distance between two points
+    /// Calculates the distance between two points
     fn dist(&self, other: &Self) -> f64;
 
+    /// Calculates the mean of a slice of points
     fn mean(ps: &[Self]) -> Self;
 }
 
+/// A clustering of `points` around a `centroid`
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub struct Cluster<P: DataPoint> {
     pub centroid: P,
@@ -52,7 +53,7 @@ impl<P: DataPoint> IntermediateCluster<P> {
     }
 }
 
-/// IMPLS FOR COMMON POINT REPRESENTATIONS
+/*** IMPLS FOR COMMON POINT REPRESENTATIONS ***/
 
 macro_rules! impl_float_2d_data_point {
     ($T:ty) => {
