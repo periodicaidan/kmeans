@@ -1,0 +1,13 @@
+[package]
+name = "kmeans"
+version = "0.1.0"
+authors = ["Aidan T. Manning <periodicaidan@gmail.com>"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+
+[dependencies]
+rand = "0.7.3"
