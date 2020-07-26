@@ -179,7 +179,7 @@ mod test {
     #[cfg(feature = "std")]
     #[test]
     fn file_test() {
-        let file = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/test_data.txt")).unwrap();
+        let file = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/test_data.txt")).unwrap();
         let data: Vec<(f64, f64, f64)> = file.trim().split("\n")
             .map(|line| {
                 let strings: Vec<&str> = line.trim().split(" ").collect();
@@ -194,6 +194,7 @@ mod test {
         let clusters = kmeans(2, data.clone());
         let centroids = Cluster::centroids(&clusters);
 
-        panic!("{:?}", centroids);
+        assert!(centroids.contains(&(9.98514851485149, 9.76534653465346, 10.132673267326735)));
+        assert!(centroids.contains(&(2.5257425742574253, 2.5920792079207926, 2.7188118811881172)));
     }
 }
